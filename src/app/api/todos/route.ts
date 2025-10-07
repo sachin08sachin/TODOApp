@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Create new task with sharing
 export async function POST(req: NextRequest) {
   const { userEmail, title, description, dueDate, priority, completed, collaborators } = await req.json();
 
@@ -53,7 +52,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ insertedId: result.insertedId });
 }
 
-// Update task with sharing and access check
+
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -69,7 +68,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Missing id or title" }, { status: 400 });
     }
 
-    // Allow update if user owns the task or is a collaborator
+    
     const result = await db.collection("todos").updateOne(
       {
         _id: new ObjectId(id),
@@ -90,7 +89,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// Delete task if owned by user
+
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {

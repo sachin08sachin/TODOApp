@@ -37,7 +37,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       <div className="absolute top-2 right-2 flex gap-2">
         <button onClick={onClose}>❌</button>
       </div>
-      {/* Form Fields */}
+      
       <label className="block mb-2">Title</label>
       <input
         type="text"
@@ -95,9 +95,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={saveTask}>
           Save
         </button>
-        {/* <button className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500" onClick={resetForm}>
-          Cancel
-        </button> */}
+       
       </div>
     </div>
   );
