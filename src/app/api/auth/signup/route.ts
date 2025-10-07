@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   const client = await clientPromise;
   const db = client.db('todo-app');
-  // Replace with your DB name
+
   const existingUser = await db
     .collection('users')
     .findOne({ email: email.toLowerCase() });

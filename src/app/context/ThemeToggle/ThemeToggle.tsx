@@ -1,11 +1,11 @@
 'use client';
 
 import { useContext } from 'react';
-import { ThemeContext } from '../context/ThemeContext'; // adjust the path as needed
+import { ThemeContext } from '../../context/ThemeContext';
+import styles from './ThemeToggle.module.css';
 
 export default function ThemeToggle({ className = '' }) {
   const themeContext = useContext(ThemeContext);
-
   if (!themeContext) return null;
   const isDark = themeContext.theme === 'dark';
 
@@ -14,15 +14,11 @@ export default function ThemeToggle({ className = '' }) {
       onClick={themeContext.toggleTheme}
       aria-label="Toggle Dark Mode"
       title="Toggle Dark Mode"
-      className={`flex items-center justify-center rounded focus:outline-none focus:ring-2 focus:ring-offset-2
-        transition
-        w-7 h-7 p-1
-        md:w-9 md:h-9 md:p-2
-        hover:bg-gray-100 dark:hover:bg-gray-700
-        ${className}`}
+      className={[styles.themeToggleBtn, isDark ? 'dark' : '', className].join(
+        ' ',
+      )}
     >
       {isDark ? (
-        // Sun icon for light mode
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-4 w-4 md:h-6 md:w-6 text-yellow-400"
@@ -38,7 +34,6 @@ export default function ThemeToggle({ className = '' }) {
           />
         </svg>
       ) : (
-        // Moon icon for dark mode
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-4 w-4 md:h-6 md:w-6 text-gray-700"

@@ -29,12 +29,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors">
       <form
-        className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-sm space-y-6"
+        className="bg-white border border-gray-300 dark:border-gray-600 rounded-lg p-8 shadow-md w-full max-w-sm space-y-6"
         onSubmit={handleSubmit}
       >
-        <h2 className="text-2xl font-bold text-center mb-4 text-gray-900 dark:text-gray-100">
+        <h2 className="text-2xl font-bold text-center mb-4 text-gray-900 dark:text-gray-800">
           Login
         </h2>
 

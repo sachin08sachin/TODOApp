@@ -4,9 +4,9 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import { TaskCard } from './components/TaskCard';
+import { TaskCard } from './components/TaskCard/TaskCard';
 import { TaskForm } from './components/TaskForm';
-import ThemeToggle from './context/ThemeToggle';
+import ThemeToggle from './context/ThemeToggle/ThemeToggle';
 import { ThemeContext } from './context/ThemeContext';
 
 type Task = {
@@ -46,7 +46,6 @@ export default function Home() {
   useEffect(() => {
     if (!session || !session.user?.email) return;
 
-    // Setup socket connection
     socketRef.current = io('http://10.31.69.213:4000');
 
     socketRef.current.on('connect', () => {
@@ -82,7 +81,7 @@ export default function Home() {
       if (res.ok) {
         const allTasks: Task[] = await res.json();
         const userEmail = session?.user?.email ?? '';
-        // Filter tasks where user is owner or collaborator
+
         const userTasks = allTasks.filter(
           (task) =>
             task.userEmail === userEmail ||
