@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "../../../lib/mongodb";
-import { ObjectId } from "mongodb";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../../lib/authOptions"; 
+import { NextRequest, NextResponse } from 'next/server';
+import clientPromise from '../../../lib/mongodb';
+import { ObjectId } from 'mongodb';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/authOptions';
 
 // Fetch tasks: owned by or shared with the user
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const client = await clientPromise;
-    const db = client.db("todo-app");
+    const db = client.db('todo-app');
 
     const todos = await db
-      .collection("todos")
+      .collection('todos')
       .find({
         $or: [
           { userEmail: session.user.email },
@@ -26,20 +26,31 @@ export async function GET(req: NextRequest) {
       .toArray();
     return NextResponse.json(todos);
   } catch (error) {
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  const { userEmail, title, description, dueDate, priority, completed, collaborators } = await req.json();
+  const {
+    userEmail,
+    title,
+    description,
+    dueDate,
+    priority,
+    completed,
+    collaborators,
+  } = await req.json();
 
   if (!userEmail || !title) {
-    return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Required fields missing' },
+      { status: 400 },
+    );
   }
 
   const client = await clientPromise;
-  const db = client.db("todo-app");
-  const result = await db.collection("todos").insertOne({
+  const db = client.db('todo-app');
+  const result = await db.collection('todos').insertOne({
     userEmail,
     title,
     description,
@@ -52,24 +63,33 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ insertedId: result.insertedId });
 }
 
-
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const client = await clientPromise;
-    const db = client.db("todo-app");
-    const { id, title, description, dueDate, priority, completed, collaborators } = await req.json();
+    const db = client.db('todo-app');
+    const {
+      id,
+      title,
+      description,
+      dueDate,
+      priority,
+      completed,
+      collaborators,
+    } = await req.json();
 
     if (!id || !title) {
-      return NextResponse.json({ error: "Missing id or title" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing id or title' },
+        { status: 400 },
+      );
     }
 
-    
-    const result = await db.collection("todos").updateOne(
+    const result = await db.collection('todos').updateOne(
       {
         _id: new ObjectId(id),
         $or: [
@@ -77,47 +97,60 @@ export async function PUT(req: NextRequest) {
           { collaborators: session.user.email },
         ],
       },
-      { $set: { title, description, dueDate, priority, completed, collaborators: collaborators || [] } }
+      {
+        $set: {
+          title,
+          description,
+          dueDate,
+          priority,
+          completed,
+          collaborators: collaborators || [],
+        },
+      },
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Todo not found or unauthorized" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Todo not found or unauthorized' },
+        { status: 404 },
+      );
     }
-    return NextResponse.json({ message: "Todo updated" });
+    return NextResponse.json({ message: 'Todo updated' });
   } catch (error) {
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
-
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const client = await clientPromise;
-    const db = client.db("todo-app");
+    const db = client.db('todo-app');
     const { id } = await req.json();
 
     if (!id) {
-      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
 
     // Only allow owner to delete (not a collaborator)
-    const result = await db.collection("todos").deleteOne({
+    const result = await db.collection('todos').deleteOne({
       _id: new ObjectId(id),
       userEmail: session.user.email,
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Todo not found or unauthorized" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Todo not found or unauthorized' },
+        { status: 404 },
+      );
     }
 
-    return NextResponse.json({ message: "Todo deleted" });
+    return NextResponse.json({ message: 'Todo deleted' });
   } catch (error) {
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
-

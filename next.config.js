@@ -11,15 +11,14 @@ const runtimeCaching = [
     },
   },
   {
-  urlPattern: /^\/$/,       // matches "/"
-  handler: 'NetworkFirst',  // fetch from network first, then fallback to cache
-  options: {
-    cacheName: 'main-page-cache',
-    expiration: { maxEntries: 1, maxAgeSeconds: 24 * 60 * 60 },
-    cacheableResponse: { statuses: [0, 200] },
+    urlPattern: /^\/$/,
+    handler: 'NetworkFirst',
+    options: {
+      cacheName: 'main-page-cache',
+      expiration: { maxEntries: 1, maxAgeSeconds: 24 * 60 * 60 },
+      cacheableResponse: { statuses: [0, 200] },
+    },
   },
-}
-,
   {
     urlPattern: /.*/,
     handler: 'StaleWhileRevalidate',

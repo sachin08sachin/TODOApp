@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect, useRef, useContext } from "react";
-import { useRouter } from "next/navigation";
-import { io, Socket } from "socket.io-client";
-import { TaskCard } from "./components/TaskCard";
-import { TaskForm } from "./components/TaskForm";
-import ThemeToggle from "./context/ThemeToggle";
-import { ThemeContext } from "./context/ThemeContext";
+import { useSession, signOut } from 'next-auth/react';
+import { useState, useEffect, useRef, useContext } from 'react';
+import { useRouter } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
+import { TaskCard } from './components/TaskCard';
+import { TaskForm } from './components/TaskForm';
+import ThemeToggle from './context/ThemeToggle';
+import { ThemeContext } from './context/ThemeContext';
 
 type Task = {
   _id: string;
@@ -15,7 +15,7 @@ type Task = {
   description: string;
   dueDate: string;
   completed: boolean;
-  priority: "Low" | "Medium" | "High";
+  priority: 'Low' | 'Medium' | 'High';
   userEmail: string;
   collaborators: string[];
 };
@@ -28,54 +28,66 @@ export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [formTask, setFormTask] = useState<Omit<Task, "_id" | "userEmail" | "collaborators">>({
-    title: "",
-    description: "",
-    dueDate: "",
+  const [formTask, setFormTask] = useState<
+    Omit<Task, '_id' | 'userEmail' | 'collaborators'>
+  >({
+    title: '',
+    description: '',
+    dueDate: '',
     completed: false,
-    priority: "Low",
+    priority: 'Low',
   });
-  const [collaboratorsInput, setCollaboratorsInput] = useState("");
+  const [collaboratorsInput, setCollaboratorsInput] = useState('');
   const [formCollaborators, setFormCollaborators] = useState<string[]>([]);
 
   const themeContext = useContext(ThemeContext);
-const isDark = themeContext?.theme === "dark";
+  const isDark = themeContext?.theme === 'dark';
 
   useEffect(() => {
     if (!session || !session.user?.email) return;
 
     // Setup socket connection
-    socketRef.current = io("http://10.31.69.213:4000");
+    socketRef.current = io('http://10.31.69.213:4000');
 
-    socketRef.current.on("connect", () => {
-      console.log("Connected to WebSocket");
+    socketRef.current.on('connect', () => {
+      console.log('Connected to WebSocket');
     });
 
+    socketRef.current.on('taskAdded', (task: Task) => {
+      if (
+        task.userEmail === session.user?.email ||
+        task.collaborators.includes(session.user?.email ?? '')
+      ) {
+        setTasks((prev) => [...prev, task]);
+      }
+    });
 
-socketRef.current.on("taskAdded", (task: Task) => {
-  if (task.userEmail === session.user?.email) {
-    setTasks((prev) => [...prev, task]);
-  }
-});
-
-    socketRef.current.on("taskUpdated", (updatedTask: Task) => {
-      if (updatedTask.userEmail === session?.user?.email) {
+    socketRef.current.on('taskUpdated', (updatedTask: Task) => {
+      if (
+        updatedTask.userEmail === session?.user?.email ||
+        updatedTask.collaborators.includes(session?.user?.email ?? '')
+      ) {
         setTasks((prev) =>
-          prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
+          prev.map((t) => (t._id === updatedTask._id ? updatedTask : t)),
         );
       }
     });
 
-    socketRef.current.on("taskDeleted", (taskId: string) => {
+    socketRef.current.on('taskDeleted', (taskId: string) => {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
     });
 
     const fetchUserTasks = async () => {
-      const res = await fetch("/api/todos");
+      const res = await fetch('/api/todos');
       if (res.ok) {
         const allTasks: Task[] = await res.json();
-        const userEmail = session?.user?.email ?? "";
-        const userTasks = allTasks.filter(task => task.userEmail === userEmail);
+        const userEmail = session?.user?.email ?? '';
+        // Filter tasks where user is owner or collaborator
+        const userTasks = allTasks.filter(
+          (task) =>
+            task.userEmail === userEmail ||
+            (task.collaborators && task.collaborators.includes(userEmail)),
+        );
         setTasks(userTasks);
       }
     };
@@ -85,24 +97,29 @@ socketRef.current.on("taskAdded", (task: Task) => {
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
-
   }, [session]);
 
   const resetForm = () => {
-    setFormTask({ title: "", description: "", dueDate: "", completed: false, priority: "Low" });
+    setFormTask({
+      title: '',
+      description: '',
+      dueDate: '',
+      completed: false,
+      priority: 'Low',
+    });
     setEditingTaskId(null);
     setFormCollaborators([]);
-    setCollaboratorsInput("");
+    setCollaboratorsInput('');
     setIsAdding(false);
   };
 
   const saveTask = async () => {
     if (!formTask.title.trim()) {
-      alert("Title is required");
+      alert('Title is required');
       return;
     }
-    let url = "/api/todos";
-    let method = "POST";
+    let url = '/api/todos';
+    let method = 'POST';
     let body: any = {
       ...formTask,
       userEmail: session?.user?.email,
@@ -110,13 +127,13 @@ socketRef.current.on("taskAdded", (task: Task) => {
     };
 
     if (editingTaskId) {
-      method = "PUT";
+      method = 'PUT';
       body = { ...body, id: editingTaskId };
     }
 
     const res = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
@@ -125,22 +142,26 @@ socketRef.current.on("taskAdded", (task: Task) => {
       const data = await res.json();
 
       if (socketRef.current) {
-        if (method === "POST") {
-          socketRef.current.emit("addTask", { ...body, _id: data.insertedId });
+        if (method === 'POST') {
+          socketRef.current.emit('addTask', { ...body, _id: data.insertedId });
         } else {
-          socketRef.current.emit("updateTask", { ...body });
+          socketRef.current.emit('updateTask', { ...body });
         }
       }
 
-      const refreshed = await fetch("/api/todos");
+      const refreshed = await fetch('/api/todos');
       if (refreshed.ok) {
         const allTasks: Task[] = await refreshed.json();
-        const userEmail = session?.user?.email ?? "";
-        const userTasks = allTasks.filter(task => task.userEmail === userEmail);
+        const userEmail = session?.user?.email ?? '';
+        const userTasks = allTasks.filter(
+          (task) =>
+            task.userEmail === userEmail ||
+            (task.collaborators && task.collaborators.includes(userEmail)),
+        );
         setTasks(userTasks);
       }
     } else {
-      console.error("Failed to save task");
+      console.error('Failed to save task');
     }
   };
 
@@ -154,14 +175,14 @@ socketRef.current.on("taskAdded", (task: Task) => {
     });
     setEditingTaskId(task._id);
     setFormCollaborators(task.collaborators ?? []);
-    setCollaboratorsInput((task.collaborators ?? []).join(", "));
+    setCollaboratorsInput((task.collaborators ?? []).join(', '));
     setIsAdding(true);
   };
 
   const handleCollaboratorsInput = (val: string) => {
     setCollaboratorsInput(val);
     const arr = val
-      .split(",")
+      .split(',')
       .map((e) => e.trim())
       .filter(Boolean)
       .filter((e) => e !== session?.user?.email);
@@ -169,27 +190,27 @@ socketRef.current.on("taskAdded", (task: Task) => {
   };
 
   const deleteTask = async (id: string) => {
-    const res = await fetch("/api/todos", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/todos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
 
     if (res.ok) {
       setTasks((prev) => prev.filter((t) => t._id !== id));
       if (socketRef.current) {
-        socketRef.current.emit("deleteTask", id);
+        socketRef.current.emit('deleteTask', id);
       }
     } else {
-      console.error("Failed to delete task");
+      console.error('Failed to delete task');
     }
   };
 
   const logout = () => {
-    signOut({ callbackUrl: "/" });
+    signOut({ callbackUrl: '/' });
   };
 
-  if (status === "loading")
+  if (status === 'loading')
     return (
       <div className="max-w-md mx-auto mt-10 p-4 border rounded animate-pulse">
         <div className="h-8 bg-gray-300 rounded mb-4"></div>
@@ -209,10 +230,13 @@ socketRef.current.on("taskAdded", (task: Task) => {
     return (
       <div className="text-center mt-20">
         <div className="text-xl mb-4">Please log in to manage your tasks.</div>
-        <button onClick={() => router.push("/auth/login")} className="btn-blue">
+        <button onClick={() => router.push('/auth/login')} className="btn-blue">
           Login
         </button>
-        <button onClick={() => router.push("/auth/signup")} className="btn-green ml-2">
+        <button
+          onClick={() => router.push('/auth/signup')}
+          className="btn-green ml-2"
+        >
           Sign Up
         </button>
       </div>
@@ -220,46 +244,62 @@ socketRef.current.on("taskAdded", (task: Task) => {
 
   return (
     <div className="max-w-7xl mx-auto min-h-screen relative px-4 pt-20 pb-20">
-{/* Top right controls (ThemeToggle + Logout) */}
-<div className="fixed top-4 right-4 z-50 flex flex-row items-center gap-3">
-  <ThemeToggle className="w-9 h-9 flex items-center justify-center" />
-  <button
-    onClick={logout}
-    className="w-10 h-10 flex items-center justify-center rounded-md bg-red-600 hover:bg-red-700 text-white shadow transition"
-    aria-label="Logout"
-  >
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V4m0 12a4 4 0 01-8 0V8a4 4 0 018 0z"/>
-    </svg>
-  </button>
-</div>
+      <div className="fixed top-4 right-4 z-50 flex flex-row items-center gap-3">
+        <ThemeToggle className="w-9 h-9 flex items-center justify-center" />
+        <button
+          onClick={logout}
+          className="w-10 h-10 flex items-center justify-center rounded-md bg-red-600 hover:bg-red-700 text-white shadow transition"
+          aria-label="Logout"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V4m0 12a4 4 0 01-8 0V8a4 4 0 018 0z"
+            />
+          </svg>
+        </button>
+      </div>
 
-{/* Plus/Add button: vertical center right */}
-{!isAdding && (
-  <button
-    onClick={() => {
-      resetForm();
-      setIsAdding(true);
-    }}
-    className="fixed top-1/2 right-6 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white shadow transition -translate-y-1/2"
-    aria-label="Add Task"
-    title="Add Task"
-  >
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-  </button>
-)}
+      {!isAdding && (
+        <button
+          onClick={() => {
+            resetForm();
+            setIsAdding(true);
+          }}
+          className="fixed top-1/2 right-6 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white shadow transition -translate-y-1/2"
+          aria-label="Add Task"
+          title="Add Task"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      )}
 
-
-
-
-    <h1 className={`fixed w-full top-4 left-0 right-0 text-center text-3xl font-bold py-2 shadow z-40 transition-colors
-  ${isDark ? "bg-gray-800 text-yellow-400" : "bg-white text-slate-900"}
-`}>
-  Task List
-</h1>
-
+      <h1
+        className={`fixed w-full top-4 left-0 right-0 text-center text-3xl font-bold py-2 shadow z-40 transition-colors
+  ${isDark ? 'bg-gray-800 text-yellow-400' : 'bg-white text-slate-900'}
+`}
+      >
+        Task List
+      </h1>
 
       {isAdding && (
         <TaskForm
@@ -278,7 +318,13 @@ socketRef.current.on("taskAdded", (task: Task) => {
       <div className="fixed top-24 bottom-16 left-0 right-0 px-4 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 overflow-y-auto h-full">
           {tasks.map((task) => (
-            <TaskCard key={task._id} task={task} onEdit={startEdit} onDelete={deleteTask} />
+            <TaskCard
+              key={task._id}
+              task={task}
+              onEdit={startEdit}
+              onDelete={deleteTask}
+              currentUserEmail={session?.user?.email ?? ''}
+            />
           ))}
         </div>
       </div>
