@@ -1,103 +1,287 @@
-import Image from "next/image";
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import { useState, useEffect, useRef, useContext } from "react";
+import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
+import { TaskCard } from "./components/TaskCard";
+import { TaskForm } from "./components/TaskForm";
+import ThemeToggle from "./context/ThemeToggle";
+import { ThemeContext } from "./context/ThemeContext";
+
+type Task = {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  completed: boolean;
+  priority: "Low" | "Medium" | "High";
+  userEmail: string;
+  collaborators: string[];
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const socketRef = useRef<Socket | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [formTask, setFormTask] = useState<Omit<Task, "_id" | "userEmail" | "collaborators">>({
+    title: "",
+    description: "",
+    dueDate: "",
+    completed: false,
+    priority: "Low",
+  });
+  const [collaboratorsInput, setCollaboratorsInput] = useState("");
+  const [formCollaborators, setFormCollaborators] = useState<string[]>([]);
+
+  const themeContext = useContext(ThemeContext);
+const isDark = themeContext?.theme === "dark";
+
+  useEffect(() => {
+    if (!session || !session.user?.email) return;
+
+    // Setup socket connection
+    socketRef.current = io("http://10.31.69.213:4000");
+
+    socketRef.current.on("connect", () => {
+      console.log("Connected to WebSocket");
+    });
+
+
+socketRef.current.on("taskAdded", (task: Task) => {
+  if (task.userEmail === session.user?.email) {
+    setTasks((prev) => [...prev, task]);
+  }
+});
+
+    socketRef.current.on("taskUpdated", (updatedTask: Task) => {
+      if (updatedTask.userEmail === session?.user?.email) {
+        setTasks((prev) =>
+          prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
+        );
+      }
+    });
+
+    socketRef.current.on("taskDeleted", (taskId: string) => {
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
+    });
+
+    const fetchUserTasks = async () => {
+      const res = await fetch("/api/todos");
+      if (res.ok) {
+        const allTasks: Task[] = await res.json();
+        const userEmail = session?.user?.email ?? "";
+        const userTasks = allTasks.filter(task => task.userEmail === userEmail);
+        setTasks(userTasks);
+      }
+    };
+
+    fetchUserTasks();
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+
+  }, [session]);
+
+  const resetForm = () => {
+    setFormTask({ title: "", description: "", dueDate: "", completed: false, priority: "Low" });
+    setEditingTaskId(null);
+    setFormCollaborators([]);
+    setCollaboratorsInput("");
+    setIsAdding(false);
+  };
+
+  const saveTask = async () => {
+    if (!formTask.title.trim()) {
+      alert("Title is required");
+      return;
+    }
+    let url = "/api/todos";
+    let method = "POST";
+    let body: any = {
+      ...formTask,
+      userEmail: session?.user?.email,
+      collaborators: formCollaborators,
+    };
+
+    if (editingTaskId) {
+      method = "PUT";
+      body = { ...body, id: editingTaskId };
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      resetForm();
+      const data = await res.json();
+
+      if (socketRef.current) {
+        if (method === "POST") {
+          socketRef.current.emit("addTask", { ...body, _id: data.insertedId });
+        } else {
+          socketRef.current.emit("updateTask", { ...body });
+        }
+      }
+
+      const refreshed = await fetch("/api/todos");
+      if (refreshed.ok) {
+        const allTasks: Task[] = await refreshed.json();
+        const userEmail = session?.user?.email ?? "";
+        const userTasks = allTasks.filter(task => task.userEmail === userEmail);
+        setTasks(userTasks);
+      }
+    } else {
+      console.error("Failed to save task");
+    }
+  };
+
+  const startEdit = (task: Task) => {
+    setFormTask({
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      completed: task.completed,
+      priority: task.priority,
+    });
+    setEditingTaskId(task._id);
+    setFormCollaborators(task.collaborators ?? []);
+    setCollaboratorsInput((task.collaborators ?? []).join(", "));
+    setIsAdding(true);
+  };
+
+  const handleCollaboratorsInput = (val: string) => {
+    setCollaboratorsInput(val);
+    const arr = val
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+      .filter((e) => e !== session?.user?.email);
+    setFormCollaborators(arr);
+  };
+
+  const deleteTask = async (id: string) => {
+    const res = await fetch("/api/todos", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+
+    if (res.ok) {
+      setTasks((prev) => prev.filter((t) => t._id !== id));
+      if (socketRef.current) {
+        socketRef.current.emit("deleteTask", id);
+      }
+    } else {
+      console.error("Failed to delete task");
+    }
+  };
+
+  const logout = () => {
+    signOut({ callbackUrl: "/" });
+  };
+
+  if (status === "loading")
+    return (
+      <div className="max-w-md mx-auto mt-10 p-4 border rounded animate-pulse">
+        <div className="h-8 bg-gray-300 rounded mb-4"></div>
+        <div className="space-y-4">
+          {[...Array(3)].map((_, idx) => (
+            <div key={idx} className="border p-4 rounded bg-gray-200">
+              <div className="h-4 bg-gray-300 rounded mb-2 w-3/4"></div>
+              <div className="h-3 bg-gray-300 rounded mb-1 w-5/6"></div>
+              <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+            </div>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+
+  if (!session)
+    return (
+      <div className="text-center mt-20">
+        <div className="text-xl mb-4">Please log in to manage your tasks.</div>
+        <button onClick={() => router.push("/auth/login")} className="btn-blue">
+          Login
+        </button>
+        <button onClick={() => router.push("/auth/signup")} className="btn-green ml-2">
+          Sign Up
+        </button>
+      </div>
+    );
+
+  return (
+    <div className="max-w-7xl mx-auto min-h-screen relative px-4 pt-20 pb-20">
+{/* Top right controls (ThemeToggle + Logout) */}
+<div className="fixed top-4 right-4 z-50 flex flex-row items-center gap-3">
+  <ThemeToggle className="w-9 h-9 flex items-center justify-center" />
+  <button
+    onClick={logout}
+    className="w-10 h-10 flex items-center justify-center rounded-md bg-red-600 hover:bg-red-700 text-white shadow transition"
+    aria-label="Logout"
+  >
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V4m0 12a4 4 0 01-8 0V8a4 4 0 018 0z"/>
+    </svg>
+  </button>
+</div>
+
+{/* Plus/Add button: vertical center right */}
+{!isAdding && (
+  <button
+    onClick={() => {
+      resetForm();
+      setIsAdding(true);
+    }}
+    className="fixed top-1/2 right-6 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white shadow transition -translate-y-1/2"
+    aria-label="Add Task"
+    title="Add Task"
+  >
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  </button>
+)}
+
+
+
+
+    <h1 className={`fixed w-full top-4 left-0 right-0 text-center text-3xl font-bold py-2 shadow z-40 transition-colors
+  ${isDark ? "bg-gray-800 text-yellow-400" : "bg-white text-slate-900"}
+`}>
+  Task List
+</h1>
+
+
+      {isAdding && (
+        <TaskForm
+          formTask={formTask}
+          setFormTask={setFormTask}
+          collaboratorsInput={collaboratorsInput}
+          handleCollaboratorsInput={handleCollaboratorsInput}
+          saveTask={saveTask}
+          resetForm={resetForm}
+          formCollaborators={formCollaborators}
+          setFormCollaborators={setFormCollaborators}
+          onClose={() => setIsAdding(false)}
+        />
+      )}
+
+      <div className="fixed top-24 bottom-16 left-0 right-0 px-4 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 overflow-y-auto h-full">
+          {tasks.map((task) => (
+            <TaskCard key={task._id} task={task} onEdit={startEdit} onDelete={deleteTask} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
