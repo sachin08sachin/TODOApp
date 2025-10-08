@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './Signup.module.css';
+import styles from './signup.module.css';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
