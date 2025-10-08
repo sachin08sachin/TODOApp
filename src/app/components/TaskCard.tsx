@@ -1,6 +1,6 @@
 import React from 'react';
-import styles from './TaskCard.module.css';
-import type { Task, TaskCardProps } from './TaskCard';
+import styles from '../components/TaskCard/TaskCard.module.css';
+import type { Task, TaskCardProps } from '../components/TaskCard/TaskCard';
 
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,

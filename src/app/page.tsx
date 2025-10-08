@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import { TaskCard } from './components/TaskCard/TaskCard';
+import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import ThemeToggle from './context/ThemeToggle/ThemeToggle';
 import { ThemeContext } from './context/ThemeContext';
@@ -46,6 +46,7 @@ export default function Home() {
   useEffect(() => {
     if (!session || !session.user?.email) return;
 
+    // Setup socket connection
     socketRef.current = io('http://10.31.69.213:4000');
 
     socketRef.current.on('connect', () => {
@@ -81,7 +82,7 @@ export default function Home() {
       if (res.ok) {
         const allTasks: Task[] = await res.json();
         const userEmail = session?.user?.email ?? '';
-
+        // Filter tasks where user is owner or collaborator
         const userTasks = allTasks.filter(
           (task) =>
             task.userEmail === userEmail ||
@@ -315,7 +316,10 @@ export default function Home() {
       )}
 
       <div className="fixed top-24 bottom-16 left-0 right-0 px-4 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 overflow-y-auto h-full">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 overflow-y-auto"
+          style={{ height: '100%' }}
+        >
           {tasks.map((task) => (
             <TaskCard
               key={task._id}

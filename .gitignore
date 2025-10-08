@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# PWA service worker and cache files
+/service-worker.js
+/public/sw.js
+/public/workbox-*
+/public/fallback-*.js
+
+# Next.js PWA plugin cache
+.next/pwa/
+
