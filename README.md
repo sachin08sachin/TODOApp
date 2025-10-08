@@ -1,4 +1,4 @@
-# QuickTask - TODO App
+# QuickTask - TODO App (https://todo-app-cvqj.vercel.app/)
 
 A modern TODO application built with Next.js, React, Node.js, Express, and MongoDB. QuickTask supports user authentication, task management, collaboration, and PWA features for offline support.
 
